@@ -1,0 +1,28 @@
+html,
+body {
+	width: 100%;
+	height: 100%;
+
+	margin: 0;
+	overflow: hidden;
+}
+
+#graph-node-label {
+	display: none;
+
+    font-family: 'Spinnaker', sans-serif;
+    font-size: 14px;
+	position: absolute;
+	top: 5rem;
+	left: 2rem;
+    right: 60rem;
+    
+
+	box-sizing: border-box;
+	padding: 1.5em 1.5em;
+
+	border-radius: 1.5em;
+
+	background: white;
+	color: black;
+}

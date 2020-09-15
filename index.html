@@ -1,0 +1,187 @@
+<head>
+    <style> body { margin: 0; } </style>
+ 
+	 <script src="https://unpkg.com/three"></script>
+     <script src="https://unpkg.com/three-spritetext"></script>
+     <script src="https://unpkg.com/3d-force-graph"></script>
+  <!--<script src="../../dist/3d-force-graph.js"></script>-->
+     <script type="text/javascript" src="graph.js"></script>
+     <script src="//unpkg.com/d3-octree"></script>
+     <script src="//unpkg.com/d3-force-3d"></script>
+     <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    
+    
+     <link rel="stylesheet" href="graphnodelabel.css">
+</head>
+
+<body onresize="resizeGraph()">
+    
+	<div id="3d-graph" style="width: 100%; height: 100%;"></div>
+
+    <!--div containing the node label to the left hand side of the window-->
+	<div id="graph-node-label"></div>
+    
+     <script type="module">   ////Graph JS script
+         
+          import * as THREE from '../build/three.module.js';
+    ///////PostPRocessing Imports/////////
+            import { EffectComposer } from './postprocessing/EffectComposer.js';
+			import { RenderPass } from './/postprocessing/RenderPass.js';
+			import { ShaderPass } from './postprocessing/ShaderPass.js';
+    import { HalftonePass } from './postprocessing/HalftonePass.js';
+
+			import { RGBShiftShader } from './shaders/RGBShiftShader.js';
+			import { DotScreenShader } from './shaders/DotScreenShader.js';
+    
+
+            import { UnrealBloomPass } from '//unpkg.com/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+         
+         
+         
+       ///Graph from json file  
+   const elem = document.getElementById('3d-graph');  
+   const Graph = ForceGraph3D()
+   
+   
+    .linkColor ('#FFFFFF')
+    .linkOpacity([0.3])
+    .linkWidth (0.003)
+    .linkResolution([9])
+    .linkDirectionalParticles(0.1)
+    .linkDirectionalParticleWidth(0.09)
+   
+   ///get info from json file
+   (document.getElementById('3d-graph'))
+    .jsonUrl('ArchiveImgsGeo.json') 
+    
+   
+   ////// onNodeHover to set the label it will be shown
+   .onNodeHover((node) => {
+		if (node) {
+			// hover on node.
+			setLabel(node.description);
+		} else {
+			// hover on background.
+			hideLabel();
+		}
+	})
+   
+.onNodeClick(node => {
+        
+          // Aim at node from outside it
+          const distance = 40;
+          const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+          
+   //Here is the only camera instance of the code
+          Graph.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new position
+            node, // lookAt ({ x, y, z })
+            4000  // ms transition duration
+            
+          );
+         })
+   
+   
+   
+   ////display nodes as images
+    .nodeThreeObject(node => {
+    if ((node.group == 1)) { // this conditional is your implementation
+    // return image code
+            const obj = new THREE.Mesh(
+            new THREE.SphereGeometry(8),
+            //ideal number i think is 8
+                //new THREE.SphereGeometry(Math.random() * 8),
+            new THREE.MeshBasicMaterial({ depthWrite: false, transparent: true, opacity: 0 })
+             );
+         const imgTexture = new THREE.TextureLoader().load(node.image);
+            //alpha test added to sprite material to enable transparent pngs
+        const material = new THREE.SpriteMaterial({ map: imgTexture, alphaTest: 0.5});
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(12, 12);
+        obj.add(sprite);
+        return obj;
+            
+  } else{
+    // return geometry code
+       const obj1 = new THREE.Mesh(
+           
+           ///random sphere diameter
+           //new THREE.SphereGeometry(Math.random() * 10),
+           
+            new THREE.SphereGeometry(0.1),
+            new THREE.MeshPhongMaterial( { color: 0xA8AEB4, flatShading: false, shininess: 1, transparent: true, opacity: 1 } )
+           
+           /*//Random color node geometries
+            new THREE.MeshLambertMaterial({
+            color: Math.round(Math.random() * Math.pow(2, 22)),
+            transparent: true,
+            opacity: 0.75
+          })*/
+       );
+          return obj1;
+    
+  };
+    
+})    
+
+
+   ////////////////////////
+    
+
+function resizeGraph() {
+	if (graph) {
+		var height = document.getElementById("3d-graph").clientHeight;
+		var width = document.getElementById("3d-graph").clientWidth;
+
+		graph.width(width);
+		graph.height(height);
+		graph.controls().handleResize();
+	}
+}
+
+function setLabel(name) {
+	var element = getLabelElement();
+	if (element) {
+		element.innerText = name;
+		element.style.display = "block";
+	}
+}
+
+
+function hideLabel() {
+	var element = getLabelElement();
+	if (element) {
+		element.style.display = "none";
+	}
+}
+
+function getLabelElement() {
+	return document.getElementById("graph-node-label");
+}
+
+         
+         //////////////////////////////////////////////////////////////////////////////////////////////
+   
+    // Spread nodes a little wider so they don't overlap with each other
+     Graph.d3Force('charge').strength(-10);//Sweet spot number:180
+   
+          
+    ////Halftone RGB effects////Diasbled /////
+    const grey = new HalftonePass();
+    grey.uniforms['radius'].value = 0.5;
+    grey.uniforms['greyscale'].value = true;
+    grey.uniforms['scatter'].value = 2;
+    grey.uniforms['blending'].value = 0.56;
+    grey.uniforms[ "rotateR" ].value = 37 / ( Math.PI / 180 );
+    grey.uniforms[ "rotateG" ].value = 30 / ( Math.PI / 180 );
+    grey.uniforms[ "rotateB" ].value = 39 / ( Math.PI / 180 );
+    //Graph.postProcessingComposer().addPass(grey);
+    
+    /* const RGB = new ShaderPass(RGBShiftShader);
+    RGB.uniforms[ 'amount'].value = 0.0015;
+    Graph.postProcessingComposer().addPass(RGB);*/
+    
+         
+         
+    </script>
+</body>
